@@ -8,6 +8,12 @@ questions = mock.questions
 
 st.title("🏅 Foundation")
 
+if "subject" not in st.session_state:
+    st.session_state.subject = None
+
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
 subjects = [
     "Maths 1",
     "Maths 2",
@@ -19,7 +25,7 @@ subjects = [
     "Programming in Python"
 ]
 
-# ---------------- SESSION STATE ----------------
+#  SESSION STATE :
 if "subject" not in st.session_state:
     st.session_state.subject = None
 
@@ -36,26 +42,26 @@ if "start_time" not in st.session_state:
     st.session_state.start_time = None
 
 
-# ---------------- SUBJECT BUTTONS ----------------
+#  SUBJECT BUTTONS :
 for subject in subjects:
 
-    if st.button(subject):
+    if st.button(subject, key=subject):
 
-        if st.session_state.active_exam != subject:
+        # reset only when switching subject
+        if st.session_state.get("active_exam") != subject:
             st.session_state.answers = {}
             st.session_state.submitted = False
-            st.session_state.start_time = time.time()
             st.session_state.current_question = 0
+            st.session_state.start_time = time.time()
 
         st.session_state.subject = subject
         st.session_state.active_exam = subject
 
+        st.rerun()   
 
-# ---------------- RUN ENGINE ----------------
-if st.session_state.subject:
 
-    if st.session_state.start_time is None:
-        st.session_state.start_time = time.time()
+#  RUN ENGINE :
+if st.session_state.get("subject"):
 
     run_exam(
         questions,

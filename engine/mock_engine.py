@@ -5,7 +5,7 @@ from streamlit_autorefresh import st_autorefresh
 
 def run_exam(questions, subject_name="Exam", duration=1800):
 
-    # ---------------- INIT ----------------
+    #  INITIAL -
     st.title(f"📝 {subject_name}")
 
     # Reset when new subject opens
@@ -19,7 +19,7 @@ def run_exam(questions, subject_name="Exam", duration=1800):
         st.session_state.current_question = 0
         st.session_state.active_subject = subject_name
 
-    # ---------------- SESSION STATE ----------------
+    #  SESSION STATE :
     if "answers" not in st.session_state:
         st.session_state.answers = {}
 
@@ -32,7 +32,7 @@ def run_exam(questions, subject_name="Exam", duration=1800):
     if "start_time" not in st.session_state:
         st.session_state.start_time = time.time()
 
-    # ---------------- TIMER ----------------
+    # ( TIMER )
     st_autorefresh(interval=1000, key="timer_refresh")
 
     if "start_time" not in st.session_state:
@@ -46,12 +46,11 @@ def run_exam(questions, subject_name="Exam", duration=1800):
     st.markdown("## ⏱ TIMER")
     st.markdown(f"### 🟢 {minutes:02d}:{seconds:02d}")
 
-    # ---------------- LAYOUT ----------------
+    # - LAYOUT -
     left, right = st.columns([3.5, 1.5])
 
-    # =========================================================
-    # LEFT SIDE
-    # =========================================================
+    
+    # LEFT SIDE :)
     with left:
 
         for index, q in enumerate(questions):
@@ -68,7 +67,7 @@ def run_exam(questions, subject_name="Exam", duration=1800):
 
             key = f"{subject_name}_{index}"
 
-            # ---------------- MCQ ----------------
+            # ( MCQ )
             if q["type"] == "mcq":
 
                 options = q["options"]
@@ -83,7 +82,7 @@ def run_exam(questions, subject_name="Exam", duration=1800):
 
                 st.session_state.answers[index] = selected
 
-            # ---------------- MSQ ----------------  
+            # ( MSQ )
             elif q["type"] == "msq":
 
                 options = q["options"]
@@ -97,7 +96,7 @@ def run_exam(questions, subject_name="Exam", duration=1800):
     
                 st.session_state.answers[index] = selected
 
-            # ---------------- NUMERICAL ----------------
+            # ( NUMERICAL )
             else:
 
                 ans = st.text_input(
@@ -107,7 +106,7 @@ def run_exam(questions, subject_name="Exam", duration=1800):
                 )
                 st.session_state.answers[index] = ans
 
-            # ---------------- RESULT ----------------
+            # : RESULT :
             if st.session_state.submitted:
 
                 user_ans = st.session_state.answers.get(index, "")
@@ -129,9 +128,9 @@ def run_exam(questions, subject_name="Exam", duration=1800):
                         st.error(f"✖ Your Answer: {user_ans}")
                         st.success(f"✔ Correct: {correct_ans}")
 
-    # =========================================================
-    # RIGHT SIDE (PANEL)
-    # =========================================================
+    
+    # RIGHT SIDE :)
+    # Number dashboard 
     with right:
 
         st.markdown("## ⏱ TIMER")
@@ -163,7 +162,7 @@ def run_exam(questions, subject_name="Exam", duration=1800):
 
         st.markdown("---")
 
-        # ---------------- SUBMIT ----------------
+        #  SUBMIT =>
         if st.button("🚀 SUBMIT TEST", use_container_width=True):
 
             st.session_state.submitted = True

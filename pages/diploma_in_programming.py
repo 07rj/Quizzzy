@@ -20,10 +20,10 @@ if "subject" not in st.session_state:
 if "active_exam" not in st.session_state:
     st.session_state.active_exam = None
 
-# ---------------- SUBJECT BUTTONS ----------------
+#  SUBJECT BUTTONS :
 for subject in subjects:
 
-    if st.button(subject):
+    if st.button(subject, key = subject):
 
         st.session_state.subject = subject
 
@@ -36,7 +36,7 @@ for subject in subjects:
         # SAVE ACTIVE SUBJECT
         st.session_state.active_exam = subject
 
-# ---------------- QUESTIONS ----------------
+#  QUESTIONS :
 questions = [
     {
     "type": "mcq",
@@ -70,7 +70,7 @@ questions = [
 
 ]
 
-# ---------------- OPEN ENGINE ----------------
+#  OPEN ENGINE :
 if st.session_state.subject:
     run_exam(
         questions,

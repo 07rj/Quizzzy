@@ -4,21 +4,24 @@ from engine.mock_engine import run_exam
 
 st.title(" 🎓 BS Level")
 
-subjects = [ "LLM"
+subjects = [ "Software Engineering",
+            "Software Testing",
+            "Ai : Search Method",
+            "Deep Learning"
    
 ]
 
-# ---------------- SESSION STATE ----------------
+#  SESSION STATE :
 if "subject" not in st.session_state:
     st.session_state.subject = None
 
 if "active_exam" not in st.session_state:
     st.session_state.active_exam = None
 
-# ---------------- SUBJECT BUTTONS ----------------
+#  SUBJECT BUTTONS :
 for subject in subjects:
 
-    if st.button(subject):
+    if st.button(subject, key = subject):
 
         st.session_state.subject = subject
 
@@ -31,7 +34,7 @@ for subject in subjects:
         # SAVE ACTIVE SUBJECT
         st.session_state.active_exam = subject
 
-# ---------------- QUESTIONS ----------------
+#  QUESTIONS :
 questions = [
     {
     "type": "mcq",
@@ -65,7 +68,7 @@ questions = [
 
 ]
 
-# ---------------- OPEN ENGINE ----------------
+#  OPEN ENGINE :
 if st.session_state.subject:
     run_exam(
         questions,
