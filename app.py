@@ -181,6 +181,5 @@ run_exam(
 
 
 # git status
-# git add .
-# git commit -m "Fix quiz system: support quiz_1.a format without merging quizzes"
+# git add .git commit -m "Fix quiz system: support quiz_1.a format without merging quizzes"
 # git push origin main
