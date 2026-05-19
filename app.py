@@ -1,111 +1,175 @@
 import streamlit as st
-
+from structure import LEVELS
+from loader import get_mocks, load_questions
 from engine.mock_engine import run_exam
 
-
+# =====================================================
+# PAGE
+# =====================================================
 st.set_page_config(page_title="Quizzzy", layout="wide")
+st.title("🎯 Quizzzy Exam System")
 
-st.title("🎯 Quizzzy")
-st.subheader("Select Your Level")
+# =====================================================
+# CLEAR OLD BROKEN SESSION ON FIRST RUN
+# =====================================================
+if "app_initialized" not in st.session_state:
+    st.session_state.clear()
+    st.session_state.app_initialized = True
 
-#  INITIAL STATE :
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-
-if "level" not in st.session_state:
-    st.session_state.level = None
-
-if "subject" not in st.session_state:
-    st.session_state.subject = None
-
-
-#  LEVEL PAGE :
-if st.session_state.page == "home":
-
-    if st.button("Foundation"):
-        st.session_state.level = "foundation"
-        st.session_state.page = "subjects"
-        st.rerun()
-
-    if st.button("Diploma in Programming"):
-        st.session_state.level = "diploma_prog"
-        st.session_state.page = "subjects"
-        st.rerun()
-
-    if st.button("Diploma in Data Science"):
-        st.session_state.level = "diploma_ds"
-        st.session_state.page = "subjects"
-        st.rerun()
-
-    if st.button("BSc Level"):
-        st.session_state.level = "bsc"
-        st.session_state.page = "subjects"
-        st.rerun()
-
-    if st.button("BS Level"):
-        st.session_state.level = "bs"
-        st.session_state.page = "subjects"
-        st.rerun()
-
-
-#  SUBJECT COURSE :
-elif st.session_state.page == "subjects":
-
-    st.title(f"Level: {st.session_state.level}")
-
-    subjects_map = {
-    "foundation": ["Maths 1", "Maths 2", "English 1", "English 2", "Statistics 1", " Statistics 2",
-                   "Programming in Python", "Computational Thinking"],
-
-    "diploma_prog": ["PDSA using Python", "Database Management System", "MOdern Application Development 1", 
-                     "Modern Application Development 2", "Programming Concepts Using JAVA", 
-                     "System commands"],
-
-    "diploma_ds": ["Machine Learning Foundation", "Machine Learning Techniques", "Machine Learning Practice",
-                    "Business Data Management", "Tools in Data Science", "Business Data Analytics", 
-                    "Introduction to Deep Learning and Generative Ai"],
-
-    "bsc": ["Intro To Big Data", "Large Language Models", " Programming in C"],
-
-    "bs": ["Software Engineering", "Software Testing", "Ai : Search Method", " Deep Learning"]
+# =====================================================
+# SAFE SESSION STATE
+# =====================================================
+defaults = {
+    "level": None,
+    "subject": None,
+    "mock": None
 }
 
-    subjects = subjects_map.get(st.session_state.level, [])
+for k, v in defaults.items():
+    st.session_state.setdefault(k, v)
 
-    if st.button("⬅ Back to Levels"):
-        st.session_state.page = "home"
-        st.session_state.level = None
-        st.rerun()
+# =====================================================
+# RESET HELPERS
+# =====================================================
+def reset_subject():
+    st.session_state.subject = None
+    st.session_state.mock = None
 
-    st.markdown("---")
 
-    for sub in subjects:
+def reset_mock():
+    st.session_state.mock = None
 
-        if st.button(sub, key=sub):
 
-            st.session_state.subject = sub
-            st.session_state.page = "exam"
+# =====================================================
+# SAFE LEVEL
+# =====================================================
+level = st.session_state.get("level")
+level_data = LEVELS.get(level) if level else None
+
+# =====================================================
+# LEVEL PAGE
+# =====================================================
+if level_data is None:
+
+    st.subheader("📚 Select Level")
+
+    for level_key, data in LEVELS.items():
+
+        if st.button(data["name"], key=f"lvl_{level_key}"):
+
+            st.session_state.level = level_key
+            reset_subject()
             st.rerun()
 
+    st.stop()
 
-#  EXAM PAGE :
-elif st.session_state.page == "exam":
+# =====================================================
+# SUBJECT PAGE
+# =====================================================
+subjects = level_data.get("subjects", {})
 
-    st.title(f"Course : {st.session_state.subject}")
+subject = st.session_state.get("subject")
 
-    if st.button("⬅ Back to Courses"):
-        st.session_state.page = "subjects"
-        st.session_state.subject = None
+if subject not in subjects:
+
+    st.subheader(f"📘 {level_data['name']}")
+
+    for subject_code, subject_name in subjects.items():
+
+        if st.button(subject_name, key=f"sub_{subject_code}"):
+
+            st.session_state.subject = subject_code
+            reset_mock()
+            st.rerun()
+
+    # BACK TO LEVELS
+    st.markdown("---")
+
+    if st.button("⬅ Back to Levels"):
+
+        st.session_state.level = None
+        reset_subject()
         st.rerun()
 
-    # IMPORT QUESTIONS ONLY HERE (safe)
-    from questions.foundation.maths_1.mock_1 import questions
+    st.stop()
 
-    run_exam(
-        questions,
-        st.session_state.subject,
-        duration=1800
+# =====================================================
+# MOCK PAGE
+# =====================================================
+subject_name = subjects[subject]
+
+st.subheader(f"🧪 Subject: {subject_name}")
+
+mock = st.session_state.get("mock")
+
+available_mocks = get_mocks(level, subject)
+
+if mock not in available_mocks:
+
+    if not available_mocks:
+        st.warning("No mocks found")
+
+    for m in available_mocks:
+
+        if st.button(m, key=f"mock_{m}"):
+
+            st.session_state.mock = m
+            st.rerun()
+
+    # BACK TO SUBJECTS
+    st.markdown("---")
+
+    if st.button("⬅ Back to Subjects"):
+
+        st.session_state.subject = None
+        reset_mock()
+        st.rerun()
+
+    st.stop()
+
+# =====================================================
+# EXAM PAGE
+# =====================================================
+questions = load_questions(level, subject, mock)
+
+if not questions:
+
+    st.error("❌ No questions found")
+    st.stop()
+
+# =====================================================
+# EXAM TOP BAR
+# =====================================================
+col1, col2, col3 = st.columns([1, 4, 1])
+
+with col1:
+
+    # BACK TO MOCKS
+    if st.button("⬅ Mocks"):
+
+        st.session_state.mock = None
+        st.rerun()
+
+with col2:
+
+    st.markdown(
+        f"### 🎯 {level_data['name']} → {subject_name} → {mock}"
     )
+
+# =====================================================
+# RUN EXAM
+# =====================================================
+title = f"{level_data['name']} - {subject_name} - {mock}"
+
+run_exam(
+    questions,
+    title,
+    duration=1800
+)
+
+
+
+
 
 
 

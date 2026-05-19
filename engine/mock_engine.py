@@ -3,180 +3,248 @@ import time
 from streamlit_autorefresh import st_autorefresh
 
 
-def run_exam(questions, subject_name="Exam", duration=1800):
+def run_exam(questions, exam_title="Exam", duration=1800):
 
-    #  INITIAL -
-    st.title(f"📝 {subject_name}")
+    if not questions:
+        st.warning("No questions available")
+        return
 
-    # Reset when new subject opens
-    if "active_subject" not in st.session_state:
-        st.session_state.active_subject = subject_name
+    # =====================================================
+    # SAFE EXAM INIT
+    # =====================================================
+    exam_key = exam_title
 
-    if st.session_state.active_subject != subject_name:
-        st.session_state.answers = {}
-        st.session_state.submitted = False
-        st.session_state.start_time = time.time()
-        st.session_state.current_question = 0
-        st.session_state.active_subject = subject_name
+    defaults = {
+        "exam_id": exam_key,
+        "answers": {},
+        "submitted": False,
+        "current_question": 0,
+        "start_time": time.time()
+    }
 
-    #  SESSION STATE :
-    if "answers" not in st.session_state:
-        st.session_state.answers = {}
+    # reset ONLY when exam changes
+    if st.session_state.get("exam_id") != exam_key:
 
-    if "submitted" not in st.session_state:
-        st.session_state.submitted = False
+        for k, v in defaults.items():
+            st.session_state[k] = v
 
-    if "current_question" not in st.session_state:
-        st.session_state.current_question = 0
+    else:
+        for k, v in defaults.items():
+            st.session_state.setdefault(k, v)
 
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = time.time()
+    # =====================================================
+    # TITLE
+    # =====================================================
+    st.title(f"📝 {exam_title}")
 
-    # ( TIMER )
-    st_autorefresh(interval=1000, key="timer_refresh")
-
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = time.time()
+    # =====================================================
+    # TIMER
+    # =====================================================
+    st_autorefresh(interval=1000, key="exam_timer")
 
     elapsed = int(time.time() - st.session_state.start_time)
     remaining = max(duration - elapsed, 0)
 
-    minutes = remaining // 30
-    seconds = remaining % 30
-    st.markdown("## ⏱ TIMER")
-    st.markdown(f"### 🟢 {minutes:02d}:{seconds:02d}")
+    st.markdown(
+        f"## ⏱ Time Left: {remaining//60:02d}:{remaining%60:02d}"
+    )
 
-    # - LAYOUT -
+    # auto submit only once
+    if remaining <= 0 and not st.session_state.submitted:
+        st.session_state.submitted = True
+        st.error("⏰ Time Over!")
+
+    # =====================================================
+    # SAFE QUESTION INDEX
+    # =====================================================
+    total = len(questions)
+
+    current = min(
+        st.session_state.current_question,
+        total - 1
+    )
+
+    st.session_state.current_question = current
+
+    q = questions[current]
+
+    q_type = q.get("type", "mcq")
+    options = q.get("options", {})
+    answer = q.get("answer", "")
+
     left, right = st.columns([3.5, 1.5])
 
-    
-    # LEFT SIDE :)
+    # =====================================================
+    # LEFT PANEL
+    # =====================================================
     with left:
 
-        for index, q in enumerate(questions):
+        st.markdown("---")
+        st.markdown(f"### Question {current + 1} / {total}")
 
-            st.markdown("---")
+        st.write(q.get("question", "No question text"))
 
-            # Highlight current question
-            if index == st.session_state.current_question:
-                st.markdown(f"### 👉 Question {index + 1}")
-            else:
-                st.markdown(f"### Question {index + 1}")
+        key = f"{exam_title}_{current}"
 
-            st.write(q["question"])
+        # ---------------- MCQ ----------------
+        if q_type == "mcq":
 
-            key = f"{subject_name}_{index}"
+            ans = st.radio(
+                "Select",
+                list(options.keys()),
+                format_func=lambda x: f"{x}. {options[x]}",
+                key=key,
+                disabled=st.session_state.submitted
+            )
 
-            # ( MCQ )
-            if q["type"] == "mcq":
+            st.session_state.answers[current] = ans
 
-                options = q["options"]
+        # ---------------- MSQ ----------------
+        elif q_type == "msq":
 
-                selected = st.radio(
-                    "Select option:",
-                    list(options.keys()),
-                    format_func=lambda x: f"{x}. {options[x]}",
-                    key=key,
-                    disabled=st.session_state.submitted
-                )
+            selected = st.session_state.answers.get(current, [])
 
-                st.session_state.answers[index] = selected
-
-            # ( MSQ )
-            elif q["type"] == "msq":
-
-                options = q["options"]
+            if not isinstance(selected, list):
                 selected = []
-    
-                st.write("Select all correct options:")
-                
-                for opt_key, opt_val in options.items():
-                     if st.checkbox(f"{opt_key}. {opt_val}", key=f"{key}_{opt_key}"):
-                         selected.append(opt_key)
-    
-                st.session_state.answers[index] = selected
 
-            # ( NUMERICAL )
-            else:
+            new_selected = []
 
-                ans = st.text_input(
-                    "Answer:",
-                    key=key,
+            st.write("Select all correct options:")
+
+            for k, v in options.items():
+
+                checked = st.checkbox(
+                    f"{k}. {v}",
+                    value=k in selected,
+                    key=f"{key}_{k}",
                     disabled=st.session_state.submitted
                 )
-                st.session_state.answers[index] = ans
 
-            # : RESULT :
-            if st.session_state.submitted:
+                if checked:
+                    new_selected.append(k)
 
-                user_ans = st.session_state.answers.get(index, "")
-                correct_ans = q["answer"]
+            st.session_state.answers[current] = new_selected
 
-                st.markdown("#### Result:")
+        # ---------------- NUMERICAL ----------------
+        else:
 
-                if q["type"] == "msq":
-                    if set(user_ans) == set(correct_ans):
-                        st.success(f"✔ Correct: {correct_ans}")
-                    else:
-                        st.error(f"✖ Your Answer: {user_ans}")
-                        st.success(f"✔ Correct: {correct_ans}")
+            ans = st.text_input(
+                "Answer",
+                key=key,
+                disabled=st.session_state.submitted
+            )
 
+            st.session_state.answers[current] = ans
+
+        # =====================================================
+        # SHOW RESULT
+        # =====================================================
+        if st.session_state.submitted:
+
+            user = st.session_state.answers.get(current, "")
+
+            if q_type == "msq":
+
+                if set(user) == set(answer):
+                    st.success("✔ Correct")
                 else:
-                    if str(user_ans) == str(correct_ans):
-                        st.success(f"✔ Correct: {correct_ans}")
-                    else:
-                        st.error(f"✖ Your Answer: {user_ans}")
-                        st.success(f"✔ Correct: {correct_ans}")
+                    st.error(f"✖ {user} | ✔ {answer}")
 
-    
-    # RIGHT SIDE :)
-    # Number dashboard 
+            else:
+
+                try:
+                    correct_check = float(user) == float(answer)
+                except:
+                    correct_check = str(user).strip() == str(answer).strip()
+
+                if correct_check:
+                    st.success("✔ Correct")
+                else:
+                    st.error(f"✖ {user} | ✔ {answer}")
+
+    # =====================================================
+    # RIGHT PANEL
+    # =====================================================
     with right:
 
-        st.markdown("## ⏱ TIMER")
-        st.markdown(f"### {minutes:02d}:{seconds:02d}")
-
-        st.markdown("---")
-        st.markdown("## 📍Question:")
+        st.markdown("## 📍 Navigation")
 
         cols = st.columns(5)
 
-        for i in range(len(questions)):
+        for i in range(total):
 
             col = cols[i % 5]
 
-            status = st.session_state.answers.get(i, None)
+            btn_type = (
+                "primary"
+                if i == current
+                else "secondary"
+            )
 
-            # button color logic
-            if i == st.session_state.current_question:
-                style = "primary"
-            elif status:
-                style = "secondary"
-            else:
-                style = "secondary"
-
-            if col.button(f"{i+1}", key=f"nav_{i}", type=style):
-
+            if col.button(
+                f"{i+1}",
+                key=f"nav_{exam_title}_{i}",
+                type=btn_type
+            ):
                 st.session_state.current_question = i
                 st.rerun()
 
         st.markdown("---")
 
-        #  SUBMIT =>
-        if st.button("🚀 SUBMIT TEST", use_container_width=True):
+        c1, c2 = st.columns(2)
 
-            st.session_state.submitted = True
+        with c1:
+
+            if st.button("⬅ Prev") and current > 0:
+                st.session_state.current_question -= 1
+                st.rerun()
+
+        with c2:
+
+            if st.button("Next ➡") and current < total - 1:
+                st.session_state.current_question += 1
+                st.rerun()
+
+        st.markdown("---")
+
+        # =====================================================
+        # SUBMIT
+        # =====================================================
+        if not st.session_state.submitted:
+
+            if st.button(
+                "🚀 Submit",
+                use_container_width=True
+            ):
+                st.session_state.submitted = True
+                st.rerun()
+
+        # =====================================================
+        # SCORE
+        # =====================================================
+        if st.session_state.submitted:
+
             score = 0
 
             for i, q in enumerate(questions):
 
-                user_ans = st.session_state.answers.get(i, "")
+                user = st.session_state.answers.get(i, "")
+                correct = q.get("answer", "")
+                q_type = q.get("type", "mcq")
 
-                if q["type"] == "msq":
-                    if set(user_ans) == set(q["answer"]):
+                if q_type == "msq":
+
+                    if set(user) == set(correct):
                         score += 1
+
                 else:
-                    if str(user_ans) == str(q["answer"]):
+
+                    try:
+                        ok = float(user) == float(correct)
+                    except:
+                        ok = str(user).strip() == str(correct).strip()
+
+                    if ok:
                         score += 1
 
-            st.success(f"🎯 SCORE: {score}/{len(questions)}")
+            st.success(f"🎯 Score: {score}/{total}")
