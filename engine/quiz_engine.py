@@ -46,7 +46,7 @@ def run_exam(questions, exam_title="Exam", duration=1800):
     elapsed = int(time.time() - st.session_state.start_time)
     remaining = max(duration - elapsed, 0)
 
-    st.markdown(f"## ⏱ Time Left: {remaining//60:02d}:{remaining%60:02d}")
+    st.markdown(f"## ⏱ Time Left: {remaining//30:02d}:{remaining%30:02d}")
 
     if remaining <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True

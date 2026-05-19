@@ -174,3 +174,13 @@ run_exam(
     title,
     duration=1800
 )
+
+
+
+
+
+
+# git status
+# git add .
+# git commit -m "Fix quiz system: support quiz_1.a format without merging quizzes"
+# git push origin main
