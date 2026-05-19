@@ -1,88 +1,83 @@
 import streamlit as st
 from structure import LEVELS
-from loader import get_mocks, load_questions
-from engine.mock_engine import run_exam
+from loader import get_quiz, load_questions
+from engine.quiz_engine import run_exam
 
 # =====================================================
-# PAGE
+# PAGE CONFIG
 # =====================================================
 st.set_page_config(page_title="Quizzzy", layout="wide")
-st.title("🎯 Quizzzy Exam System")
+st.title("🎯 Quizzzy ")
+
 
 # =====================================================
-# CLEAR OLD BROKEN SESSION ON FIRST RUN
+# INIT SESSION SAFE
 # =====================================================
-if "app_initialized" not in st.session_state:
+if "init" not in st.session_state:
     st.session_state.clear()
-    st.session_state.app_initialized = True
+    st.session_state.init = True
 
-# =====================================================
-# SAFE SESSION STATE
-# =====================================================
 defaults = {
     "level": None,
     "subject": None,
-    "mock": None
+    "quiz": None
 }
 
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
+
 
 # =====================================================
 # RESET HELPERS
 # =====================================================
 def reset_subject():
     st.session_state.subject = None
-    st.session_state.mock = None
+    st.session_state.quiz = None
 
 
-def reset_mock():
-    st.session_state.mock = None
+def reset_quiz():
+    st.session_state.quiz = None
 
 
 # =====================================================
-# SAFE LEVEL
+# LEVEL SELECTION
 # =====================================================
 level = st.session_state.get("level")
 level_data = LEVELS.get(level) if level else None
 
-# =====================================================
-# LEVEL PAGE
-# =====================================================
 if level_data is None:
 
     st.subheader("📚 Select Level")
 
-    for level_key, data in LEVELS.items():
+    for lvl, data in LEVELS.items():
 
-        if st.button(data["name"], key=f"lvl_{level_key}"):
+        if st.button(data["name"], key=f"lvl_{lvl}"):
 
-            st.session_state.level = level_key
+            st.session_state.level = lvl
             reset_subject()
             st.rerun()
 
     st.stop()
 
-# =====================================================
-# SUBJECT PAGE
-# =====================================================
-subjects = level_data.get("subjects", {})
 
+# =====================================================
+# SUBJECT SELECTION
+# =====================================================
+subjects = level_data["subjects"]
 subject = st.session_state.get("subject")
 
 if subject not in subjects:
 
     st.subheader(f"📘 {level_data['name']}")
 
-    for subject_code, subject_name in subjects.items():
+    for code, name in subjects.items():
 
-        if st.button(subject_name, key=f"sub_{subject_code}"):
+        if st.button(name, key=f"sub_{code}"):
 
-            st.session_state.subject = subject_code
-            reset_mock()
+            st.session_state.subject = code
+            reset_quiz()
             st.rerun()
 
-    # BACK TO LEVELS
     st.markdown("---")
 
     if st.button("⬅ Back to Levels"):
@@ -93,85 +88,89 @@ if subject not in subjects:
 
     st.stop()
 
+
 # =====================================================
-# MOCK PAGE
+# QUIZ SELECTION (NO SPLITTING LOGIC)
 # =====================================================
 subject_name = subjects[subject]
-
 st.subheader(f"🧪 Subject: {subject_name}")
 
-mock = st.session_state.get("mock")
+quiz = st.session_state.get("quiz")
 
-available_mocks = get_mocks(level, subject)
+available_quizzes = get_quiz(level, subject)
 
-if mock not in available_mocks:
+if quiz not in available_quizzes:
 
-    if not available_mocks:
-        st.warning("No mocks found")
+    if not available_quizzes:
+        st.warning("You have to wait a little bit for this specific quiz")
 
-    for m in available_mocks:
+    for q in available_quizzes:
 
-        if st.button(m, key=f"mock_{m}"):
+        # display format
+        parts = q.split(".")
+        base = parts[0]           # quiz_1
+        part = parts[1] if len(parts) > 1 else None
 
-            st.session_state.mock = m
+        display = f"Quiz {base.split('_')[1]}"
+        if part:
+            display += f" (Part {part.upper()})"
+
+        if st.button(display, key=f"quiz_{q}"):
+
+            st.session_state.quiz = q
             st.rerun()
 
-    # BACK TO SUBJECTS
     st.markdown("---")
 
-    if st.button("⬅ Back to Subjects"):
+    if st.button("⬅ Back to Cources"):
 
         st.session_state.subject = None
-        reset_mock()
+        reset_quiz()
         st.rerun()
 
     st.stop()
 
+
 # =====================================================
-# EXAM PAGE
+# 🔥 FIX: USE FULL QUIZ NAME DIRECTLY
 # =====================================================
-questions = load_questions(level, subject, mock)
+questions = load_questions(level, subject, quiz)
 
 if not questions:
-
     st.error("❌ No questions found")
     st.stop()
 
+
 # =====================================================
-# EXAM TOP BAR
+# HEADER
 # =====================================================
-col1, col2, col3 = st.columns([1, 4, 1])
+col1, col2 = st.columns([1, 4])
 
 with col1:
 
-    # BACK TO MOCKS
-    if st.button("⬅ Mocks"):
+    if st.button("⬅ Quiz List"):
 
-        st.session_state.mock = None
+        st.session_state.quiz = None
         st.rerun()
 
 with col2:
 
-    st.markdown(
-        f"### 🎯 {level_data['name']} → {subject_name} → {mock}"
-    )
+    parts = quiz.split(".")
+    base = parts[0]
+    part = parts[1] if len(parts) > 1 else ""
+
+    title = f"{level_data['name']} → {subject_name} → Quiz {base.split('_')[1]}"
+    if part:
+        title += f" (Part {part.upper()})"
+
+    st.markdown(f"### 🎯 {title}")
+
 
 # =====================================================
 # RUN EXAM
 # =====================================================
-title = f"{level_data['name']} - {subject_name} - {mock}"
-
 run_exam(
     questions,
     title,
     duration=1800
 )
-
-
-
-
-
-
-
-  
-   

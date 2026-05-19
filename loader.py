@@ -1,92 +1,40 @@
 import os
-import importlib
+import importlib.util
 
 BASE = "questions"
 
 
 # =====================================================
-# LEVELS
+# GET QUIZZES (quiz_1.a, quiz_1.b)
 # =====================================================
-def get_levels():
-
-    if not os.path.exists(BASE):
-        return []
-
-    return sorted([
-        item for item in os.listdir(BASE)
-        if os.path.isdir(os.path.join(BASE, item))
-        and not item.startswith("__")
-        and item != "__pycache__"
-    ])
-
-
-# =====================================================
-# SUBJECTS
-# =====================================================
-def get_subjects(level):
-
-    if not isinstance(level, str):
-        return []
-
-    path = os.path.join(BASE, level)
-
-    if not os.path.exists(path):
-        return []
-
-    return sorted([
-        item for item in os.listdir(path)
-        if os.path.isdir(os.path.join(path, item))
-        and not item.startswith("__")
-        and item != "__pycache__"
-    ])
-
-
-# =====================================================
-# MOCKS
-# =====================================================
-def get_mocks(level, subject):
-
-    if not isinstance(level, str):
-        return []
-
-    if not isinstance(subject, str):
-        return []
+def get_quiz(level, subject):
 
     path = os.path.join(BASE, level, subject)
 
     if not os.path.exists(path):
         return []
 
-    return sorted([
-        file.replace(".py", "")
-        for file in os.listdir(path)
-        if file.startswith("mock_")
-        and file.endswith(".py")
-    ])
+    quizzes = []
+
+    for file in os.listdir(path):
+        if file.startswith("quiz_") and file.endswith(".py"):
+            quizzes.append(file.replace(".py", ""))
+
+    return sorted(quizzes)
 
 
 # =====================================================
-# LOAD QUESTIONS
+# LOAD SINGLE QUIZ ONLY (NO MERGE)
 # =====================================================
-def load_questions(level, subject, mock):
+def load_questions(level, subject, quiz):
 
-    if not all([level, subject, mock]):
+    file_path = os.path.join(BASE, level, subject, quiz + ".py")
+
+    if not os.path.exists(file_path):
         return []
 
-    module_path = f"{BASE}.{level}.{subject}.{mock}"
+    spec = importlib.util.spec_from_file_location(quiz, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
 
-    try:
-        module = importlib.import_module(module_path)
-
-        questions = getattr(module, "questions", [])
-
-        if not isinstance(questions, list):
-            return []
-
-        return questions
-
-    except ModuleNotFoundError:
-        return []
-
-    except Exception:
-        return []
+    return getattr(module, "questions", [])

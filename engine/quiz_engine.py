@@ -10,27 +10,28 @@ def run_exam(questions, exam_title="Exam", duration=1800):
         return
 
     # =====================================================
-    # SAFE EXAM INIT
+    # STABLE EXAM IDENTIFIER
     # =====================================================
     exam_key = exam_title
 
-    defaults = {
-        "exam_id": exam_key,
-        "answers": {},
-        "submitted": False,
-        "current_question": 0,
-        "start_time": time.time()
-    }
-
-    # reset ONLY when exam changes
+    # =====================================================
+    # INIT / RESET ON NEW EXAM ONLY
+    # =====================================================
     if st.session_state.get("exam_id") != exam_key:
 
-        for k, v in defaults.items():
-            st.session_state[k] = v
+        st.session_state.exam_id = exam_key
+        st.session_state.answers = {}
+        st.session_state.submitted = False
+        st.session_state.current_question = 0
+        st.session_state.start_time = time.time()
 
-    else:
-        for k, v in defaults.items():
-            st.session_state.setdefault(k, v)
+    # =====================================================
+    # SAFETY DEFAULTS (DO NOT RESET EXISTING DATA)
+    # =====================================================
+    st.session_state.setdefault("answers", {})
+    st.session_state.setdefault("submitted", False)
+    st.session_state.setdefault("current_question", 0)
+    st.session_state.setdefault("start_time", time.time())
 
     # =====================================================
     # TITLE
@@ -40,30 +41,23 @@ def run_exam(questions, exam_title="Exam", duration=1800):
     # =====================================================
     # TIMER
     # =====================================================
-    st_autorefresh(interval=1000, key="exam_timer")
+    st_autorefresh(interval=1000, key=f"timer_{exam_key}")
 
     elapsed = int(time.time() - st.session_state.start_time)
     remaining = max(duration - elapsed, 0)
 
-    st.markdown(
-        f"## ⏱ Time Left: {remaining//60:02d}:{remaining%60:02d}"
-    )
+    st.markdown(f"## ⏱ Time Left: {remaining//60:02d}:{remaining%60:02d}")
 
-    # auto submit only once
     if remaining <= 0 and not st.session_state.submitted:
         st.session_state.submitted = True
         st.error("⏰ Time Over!")
 
     # =====================================================
-    # SAFE QUESTION INDEX
+    # QUESTION HANDLING
     # =====================================================
     total = len(questions)
 
-    current = min(
-        st.session_state.current_question,
-        total - 1
-    )
-
+    current = min(st.session_state.current_question, total - 1)
     st.session_state.current_question = current
 
     q = questions[current]
@@ -75,16 +69,15 @@ def run_exam(questions, exam_title="Exam", duration=1800):
     left, right = st.columns([3.5, 1.5])
 
     # =====================================================
-    # LEFT PANEL
+    # LEFT PANEL (QUESTION)
     # =====================================================
     with left:
 
         st.markdown("---")
         st.markdown(f"### Question {current + 1} / {total}")
-
         st.write(q.get("question", "No question text"))
 
-        key = f"{exam_title}_{current}"
+        key = f"{exam_key}_{current}"
 
         # ---------------- MCQ ----------------
         if q_type == "mcq":
@@ -103,7 +96,6 @@ def run_exam(questions, exam_title="Exam", duration=1800):
         elif q_type == "msq":
 
             selected = st.session_state.answers.get(current, [])
-
             if not isinstance(selected, list):
                 selected = []
 
@@ -137,33 +129,31 @@ def run_exam(questions, exam_title="Exam", duration=1800):
             st.session_state.answers[current] = ans
 
         # =====================================================
-        # SHOW RESULT
+        # RESULT PER QUESTION
         # =====================================================
         if st.session_state.submitted:
 
             user = st.session_state.answers.get(current, "")
 
             if q_type == "msq":
-
                 if set(user) == set(answer):
                     st.success("✔ Correct")
                 else:
                     st.error(f"✖ {user} | ✔ {answer}")
 
             else:
-
                 try:
-                    correct_check = float(user) == float(answer)
+                    ok = float(user) == float(answer)
                 except:
-                    correct_check = str(user).strip() == str(answer).strip()
+                    ok = str(user).strip() == str(answer).strip()
 
-                if correct_check:
+                if ok:
                     st.success("✔ Correct")
                 else:
                     st.error(f"✖ {user} | ✔ {answer}")
 
     # =====================================================
-    # RIGHT PANEL
+    # RIGHT PANEL (NAVIGATION)
     # =====================================================
     with right:
 
@@ -175,17 +165,9 @@ def run_exam(questions, exam_title="Exam", duration=1800):
 
             col = cols[i % 5]
 
-            btn_type = (
-                "primary"
-                if i == current
-                else "secondary"
-            )
+            btn_type = "primary" if i == current else "secondary"
 
-            if col.button(
-                f"{i+1}",
-                key=f"nav_{exam_title}_{i}",
-                type=btn_type
-            ):
+            if col.button(f"{i+1}", key=f"nav_{exam_key}_{i}", type=btn_type):
                 st.session_state.current_question = i
                 st.rerun()
 
@@ -194,13 +176,11 @@ def run_exam(questions, exam_title="Exam", duration=1800):
         c1, c2 = st.columns(2)
 
         with c1:
-
             if st.button("⬅ Prev") and current > 0:
                 st.session_state.current_question -= 1
                 st.rerun()
 
         with c2:
-
             if st.button("Next ➡") and current < total - 1:
                 st.session_state.current_question += 1
                 st.rerun()
@@ -211,18 +191,14 @@ def run_exam(questions, exam_title="Exam", duration=1800):
         # SUBMIT
         # =====================================================
         if not st.session_state.submitted:
-
-            if st.button(
-                "🚀 Submit",
-                use_container_width=True
-            ):
+            if st.button("🚀 Submit", use_container_width=True):
                 st.session_state.submitted = True
                 st.rerun()
 
         # =====================================================
         # SCORE
         # =====================================================
-        if st.session_state.submitted:
+        def calculate_score():
 
             score = 0
 
@@ -233,12 +209,9 @@ def run_exam(questions, exam_title="Exam", duration=1800):
                 q_type = q.get("type", "mcq")
 
                 if q_type == "msq":
-
                     if set(user) == set(correct):
                         score += 1
-
                 else:
-
                     try:
                         ok = float(user) == float(correct)
                     except:
@@ -247,4 +220,7 @@ def run_exam(questions, exam_title="Exam", duration=1800):
                     if ok:
                         score += 1
 
-            st.success(f"🎯 Score: {score}/{total}")
+            return score
+
+        if st.session_state.submitted:
+            st.success(f"🎯 Score: {calculate_score()}/{total}")

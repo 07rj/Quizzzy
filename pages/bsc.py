@@ -1,40 +1,49 @@
 import streamlit as st
-import time
 import importlib
 from structure import LEVELS
-from engine.mock_engine import run_exam
+from engine.quiz_engine import run_exam
 
+# =====================================================
+# TITLE
+# =====================================================
 st.title("📜 BSc Level")
 
-# ---------------- SUBJECT CONFIG ----------------
-subjects_map = LEVELS["bsc"]["subjects"]
+level = "bsc"
+
+subjects_map = LEVELS[level]["subjects"]
 subjects = list(subjects_map.keys())
 
-# ---------------- SAFE SESSION INIT ----------------
+# =====================================================
+# SAFE SESSION INIT
+# =====================================================
 defaults = {
     "subject": None,
-    "mock": None,
-    "active_exam": None,
+    "quiz": None,
     "answers": {},
     "submitted": False,
     "current_question": 0,
-    "start_time": None
+    "start_time": None,
+    "active_exam": None
 }
 
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
 
-# ---------------- RESET ----------------
+# =====================================================
+# RESET
+# =====================================================
 def reset():
-    st.session_state.mock = None
+    st.session_state.quiz = None
     st.session_state.answers = {}
     st.session_state.submitted = False
     st.session_state.current_question = 0
     st.session_state.start_time = None
 
 
-# ---------------- SUBJECT SELECTION ----------------
+# =====================================================
+# SUBJECT SELECTION
+# =====================================================
 if st.session_state.subject is None:
 
     st.subheader("Select Subject")
@@ -48,55 +57,73 @@ if st.session_state.subject is None:
             st.rerun()
 
 
-# ---------------- MOCK SELECTION ----------------
-if st.session_state.subject and st.session_state.mock is None:
+# =====================================================
+# QUIZ SELECTION
+# =====================================================
+if st.session_state.subject and st.session_state.quiz is None:
+
+    subject = st.session_state.subject
 
     if st.button("⬅ Back"):
         st.session_state.subject = None
         reset()
         st.rerun()
 
-    st.subheader(subjects_map[st.session_state.subject])
+    st.subheader(subjects_map[subject])
 
+    quizzes = []
+
+    # detect quiz files
     for i in range(1, 100):
 
-        mock = f"mock_{i}"
-        module_path = f"questions.bsc.{st.session_state.subject}.{mock}"
+        quiz = f"quiz_{i}"
+        module_path = f"questions.{level}.{subject}.{quiz}"
 
         try:
             importlib.import_module(module_path)
-
-            if st.button(mock, key=f"mock_{mock}"):
-                st.session_state.mock = mock
-                st.rerun()
-
+            quizzes.append(quiz)
         except ModuleNotFoundError:
             break
         except Exception:
             continue
 
+    for q in quizzes:
 
-# ---------------- LOAD QUESTIONS ----------------
-def load(subject, mock):
-    module = importlib.import_module(
-        f"questions.bsc.{subject}.{mock}"
-    )
-    return getattr(module, "questions", [])
+        if st.button(q, key=f"quiz_{q}"):
+
+            st.session_state.quiz = q
+            st.rerun()
 
 
-# ---------------- EXAM ----------------
-if st.session_state.subject and st.session_state.mock:
+# =====================================================
+# LOAD QUESTIONS
+# =====================================================
+def load(subject, quiz):
 
-    # ❌ REMOVED WRONG AUTO RESET (was breaking app)
+    module_path = f"questions.{level}.{subject}.{quiz}"
 
-    questions = load(st.session_state.subject, st.session_state.mock)
+    try:
+        module = importlib.import_module(module_path)
+        return getattr(module, "questions", [])
+    except Exception:
+        return []
+
+
+# =====================================================
+# RUN EXAM
+# =====================================================
+if st.session_state.subject and st.session_state.quiz:
+
+    questions = load(st.session_state.subject, st.session_state.quiz)
 
     if not questions:
-        st.error("No questions found")
+        st.error(f"❌ No questions found for {st.session_state.quiz}")
         st.stop()
+
+    title = f"BSc - {subjects_map[st.session_state.subject]} - {st.session_state.quiz}"
 
     run_exam(
         questions,
-        f"{subjects_map[st.session_state.subject]} - {st.session_state.mock}",
+        title,
         duration=1800
     )
