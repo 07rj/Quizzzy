@@ -2,7 +2,7 @@
 
 LEVELS = {
     "foundation": {
-        "name": "Foundation",
+        "name": "⚙️ Foundation",
         "subjects": {
             "ct": "Computational Thinking",
             "english_1": "English 1",
@@ -16,7 +16,7 @@ LEVELS = {
     },
 
     "diploma_prog": {
-        "name": "Diploma In Programming",
+        "name": "🧑🏼‍💻 Diploma In Programming",
         "subjects": {
             "app_dev_1": "Modern Application Development 1",
             "app_dev_2": "Modern Application Development 2",
@@ -28,7 +28,7 @@ LEVELS = {
     },
 
     "diploma_ds": {
-        "name": "Diploma In Data Science",
+        "name": " 🐼 Diploma In Data Science",
         "subjects": {
             "ba": "Business Analytics",
             "bdm": "Business Data Management",
@@ -41,7 +41,7 @@ LEVELS = {
     },
 
     "bsc": {
-        "name": "BSc Level",
+        "name": "📃 BSc Level",
         "subjects": {
             "big_data": "Big Data",
             "llm": "Large Language Models",
@@ -51,7 +51,7 @@ LEVELS = {
     },
 
     "bs": {
-        "name": "BS Level",
+        "name": "🎓 BS Level",
         "subjects": {
             "ai": "AI: Search Method",
             "dl": "Deep Learning",
